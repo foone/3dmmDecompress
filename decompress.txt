@@ -1,0 +1,134 @@
+header:
+  0(4): identifier: 'KCDC'(decompress at 00434C00) or 'KCD2'(decompress at 00438910)
+  4(4): decompressed size (big endian)
+  5(1): marker (must be 0)
+
+N-4(4): end of data: FF FF FF FF 
+
+
+KCDC
+
+byte 0: if not & 1, write byte>>1 to output
+byte 1: if not & 2, write byte>>2 to output
+byte 2: if not & 4, write byte>>3 to output
+byte 3: if not & 8, write byte>>4 to output
+byte 4: if not &16, write byte>>5 to output
+
+if bit is set and the next one isn't, shift off and mask with 3F (?) and add 1
+
+Some kind of LZSS algoritm. links:
+
+http://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski
+http://www.cabextract.org.uk/libmspack/
+http://www.cabextract.org.uk/libmspack/doc/szdd_kwaj_format.html
+
+9-bit word?
+
+if not word&1:
+  read_word>>1&0xFF to output
+else:
+  if word&2:
+    if word&4:
+      if word&8:
+        bytes_to_write=3
+        marker=word>>4 & 0xFFFFFF
+        look_back=marker + 4673 (?)
+        read ptr 
+
+  max of 3 bits which scale the look-back exponent?
+
+bits:
+  1  2  4  8
+------------
+
+  0  ?  ?  ?      output raw byte (word>>1) nexttest=02
+  1  1  1  1      copy_size=3 shr=4 and=0FFFFF add=1241 nextbyte=ebx-1 ebx+=3
+                  bits:
+                    001  002  004  008  010  020  040  080  100  200  400  800
+                      1    2    4    8   16   32   64  128  256  512 1024 2048
+                   -----------------------------------------------------------
+                      0    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?  COPY nexttest=02
+                      1    0    c   nt    ?    ?    ?    ?    ?    ?    ?    ?  shr=2 add=001 and=001 COPY nexttest=08
+                      1    1    0    c    c   nt    ?    ?    ?    ?    ?    ?  shr=3 add=003 and=003 COPY nexttest=20
+                      1    1    1    0    c    c    c   nt    ?    ?    ?    ?  shr=4 add=007 and=007 COPY nexttest=80
+                      1    1    1    1    0    c    c    c    c   nt    ?    ?  shr=5 add=00F and=00F nextbyte=ebx-3 nexttest=02
+                      1    1    1    1    1    0    c    c    c    c    c   nt  shr=6 add=01F and=01F nextbyte=ebx-3 nexttest=08
+                      1    1    1    1    1    1    0    ?    ?    ?    ?    ?  shr=7 add=03F and=03F nextbyte=ebx-3 nexttest=20
+                      1    1    1    1    1    1    1    0    ?    ?    ?    ?  shr=8 add=07F and=07F nextbyte=ebx-3 nexttest=80
+                      1    1    1    1    1    1    1    1    0    ?    ?    ?  shr=9 add=0FF and=0FF nextbyte=ebx-2 nexttest=02
+                      1    1    1    1    1    1    1    1    1    0    ?    ?  shr=A add=1FF and=1FF nextbyte=ebx-2 nexttest=08
+                      1    1    1    1    1    1    1    1    1    1    0    ?  shr=B add=3FF and=3FF nextbyte=ebx-2 nexttest=20
+                      1    1    1    1    1    1    1    1    1    1    1    0  shr=C add=7FF and=7FF nextbyte=ebx-2 nexttest=80
+                      1    1    1    1    1    1    1    1    1    1    1    1  EXIT WITH FAILURE
+
+
+  1  1  1  0      copy_size=2 shr=4 and=000FFF add=0241 nextbyte=ebx-2 ebx+=2
+                  bits:
+                    001  002  004  008  010  020  040  080  100  200  400  800
+                      1    2    4    8   16   32   64  128  256  512 1024 2048
+                   -----------------------------------------------------------
+                      0    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?  COPY nexttest=02
+                      1    0    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?  shr=2 add=001 and=001 COPY nexttest=08
+                      1    1    0    ?    ?    ?    ?    ?    ?    ?    ?    ?  shr=3 add=003 and=003 COPY nexttest=20
+                      1    1    1    0    ?    ?    ?    ?    ?    ?    ?    ?  shr=4 add=007 and=007 COPY nexttest=80
+                      1    1    1    1    0    ?    ?    ?    ?    ?    ?    ?  shr=5 add=00F and=00F nextbyte=ebx-3 nexttest=02
+                      1    1    1    1    1    0    ?    ?    ?    ?    ?    ?  shr=6 add=01F and=01F nextbyte=ebx-3 nexttest=08
+                      1    1    1    1    1    1    0    ?    ?    ?    ?    ?  shr=7 add=03F and=03F nextbyte=ebx-3 nexttest=20
+                      1    1    1    1    1    1    1    0    ?    ?    ?    ?  shr=8 add=07F and=07F nextbyte=ebx-3 nexttest=80
+                      1    1    1    1    1    1    1    1    0    ?    ?    ?  shr=9 add=0FF and=0FF nextbyte=ebx-2 nexttest=02
+                      1    1    1    1    1    1    1    1    1    0    ?    ?  shr=A add=1FF and=1FF nextbyte=ebx-2 nexttest=08
+                      1    1    1    1    1    1    1    1    1    1    0    ?  shr=B add=3FF and=3FF nextbyte=ebx-2 nexttest=20
+                      1    1    1    1    1    1    1    1    1    1    1    0  shr=C add=7FF and=7FF nextbyte=ebx-2 nexttest=80
+                      1    1    1    1    1    1    1    1    1    1    1    1  EXIT WITH FAILURE
+
+  1  1  0  ?      copy_size=2 shr=3 and=0001FF add=0041 nextbyte=ebx-3 ebx+=1
+                   bits:
+                    010  020  040  080  100  200  400  800 1000 2000 4000 8000
+                     16   32   64  128  256  512 1024 2048 8192 
+                   ---------------------------------------------
+                      0    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?  COPY nexttest=20
+                      1    0    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?  shr=06 add=001 and=001 COPY nexttest=80
+                      1    1    0    ?    ?    ?    ?    ?    ?    ?    ?    ?  shr=07 add=003 and=003 nextbyte=ebx-2 nexttest=02
+                      1    1    1    0    ?    ?    ?    ?    ?    ?    ?    ?  shr=08 add=007 and=007 nextbyte=ebx-3 nexttest=08
+                      1    1    1    1    0    ?    ?    ?    ?    ?    ?    ?  shr=09 add=00F and=00F nextbyte=ebx-3 nexttest=20
+                      1    1    1    1    1    0    ?    ?    ?    ?    ?    ?  shr=0A add=01F and=01F nextbyte=ebx-3 nexttest=80
+                      1    1    1    1    1    1    0    ?    ?    ?    ?    ?  shr=0B add=03F and=03F nextbyte=ebx-2 nexttest=02
+                      1    1    1    1    1    1    1    0    ?    ?    ?    ?  shr=0C add=07F and=07F nextbyte=ebx-2 nexttest=08
+                      1    1    1    1    1    1    1    1    0    ?    ?    ?  shr=0D add=0FF and=0FF nextbyte=ebx-2 nexttest=20
+                      1    1    1    1    1    1    1    1    1    0    ?    ?  shr=0E add=1FF and=1FF nextbyte=ebx-2 nexttest=80
+                      1    1    1    1    1    1    1    1    1    1    0    ?  shr=0F add=3FF and=3FF nextbyte=ebx-1 nexttest=02
+                      1    1    1    1    1    1    1    1    1    1    1    0  shr=10 add=7FF and=7FF nextbyte=ebx-1 nexttest=08
+                      1    1    1    1    1    1    1    1    1    1    1    1  EXIT WITH FAILURE
+
+  
+  1  0  ?  ?      copy_size=2 shr=2 and=00003F add=0001 nextbyte=ebx-3 ebx+=1 
+                  bits:
+                    001  002  004  008  010  020  040  080  100  200  400  800
+                      1    2    4    8   16   32   64  128  256  512 1024 2048
+                   -----------------------------------------------------------
+                      0    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?  COPY nexttest=02
+                      1    0    ?    ?    ?    ?    ?    ?    ?    ?    ?    ?  shr=2 add=001 and=001 COPY nexttest=08
+                      1    1    0    ?    ?    ?    ?    ?    ?    ?    ?    ?  shr=3 add=003 and=003 COPY nexttest=20
+                      1    1    1    0    ?    ?    ?    ?    ?    ?    ?    ?  shr=4 add=007 and=007 COPY nexttest=80
+                      1    1    1    1    0    ?    ?    ?    ?    ?    ?    ?  shr=5 add=00F and=00F nextbyte=ebx-3 nexttest=02
+                      1    1    1    1    1    0    ?    ?    ?    ?    ?    ?  shr=6 add=01F and=01F nextbyte=ebx-3 nexttest=08
+                      1    1    1    1    1    1    0    ?    ?    ?    ?    ?  shr=7 add=03F and=03F nextbyte=ebx-3 nexttest=20
+                      1    1    1    1    1    1    1    0    ?    ?    ?    ?  shr=8 add=07F and=07F nextbyte=ebx-3 nexttest=80
+                      1    1    1    1    1    1    1    1    0    ?    ?    ?  shr=9 add=0FF and=0FF nextbyte=ebx-2 nexttest=02
+                      1    1    1    1    1    1    1    1    1    0    ?    ?  shr=A add=1FF and=1FF nextbyte=ebx-2 nexttest=08
+                      1    1    1    1    1    1    1    1    1    1    0    ?  shr=B add=3FF and=3FF nextbyte=ebx-2 nexttest=20
+                      1    1    1    1    1    1    1    1    1    1    1    0  shr=C add=7FF and=7FF nextbyte=ebx-2 nexttest=80
+                      1    1    1    1    1    1    1    1    1    1    1    1  EXIT WITH FAILURE
+
+  
+ 
+registers:
+
+  esi = look_back
+  eax=read word
+   al=read byte
+   ah=read byte#2
+  ecx=copy size
+  edi=output ptr
+  ebx=input ptr
+
